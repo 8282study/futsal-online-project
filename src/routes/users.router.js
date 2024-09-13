@@ -7,6 +7,7 @@ import authMiddleware from '../middlewares/auth.middleware.js';
 
 const SECRET_CODE = process.env.SECRET_CODE;
 
+
 const router = express.Router();
 
 // 회원가입 라우터
@@ -87,7 +88,6 @@ router.post('/auth/sign-in', async (req, res, next) => {
                 errorMessage: '틀린 비밀번호 입니다.',
             });
         }
-
         const token = jwt.sign({ userID: isExistUser.userID }, SECRET_CODE); // JWT 토큰 생성
         res.setHeader('Authorization', `Bearer ${token}`); // 응답 헤더에 토큰 설정
         return res
@@ -99,4 +99,48 @@ router.post('/auth/sign-in', async (req, res, next) => {
     }
 });
 
+router.post('/games/play/:userId', authMiddleware, async (req, res, next) => {
+    const userId = req.user;
+    const opponentId = req.params;
+
+    const userStat = await prisma.users.findFirst({
+        where: { userId: +userId },
+        select: {
+            stats: true,
+        },
+    });
+
+    const opponentStat = await prisma.users.findFirst({
+        where: { userId: +opponentId },
+        select: {
+            stats: true,
+        },
+    });
+
+    //양쪽 팀 불러오기
+    const userTeam = await prisma.EquippedPlayers.findMany({
+        where : {userId : +userId}
+    })
+
+    const opponentTeam = await prisma.EquippedPlayers.findMany({
+        where : {userId : +opponentId}
+    })
+
+    //양쪽 팀이 3명이 맞는지 확인
+    if(gamelogic.checkAbleGame(userTeam, opponentTeam)){
+        return res.status(401).json({message : "팀원이 부족합니다."});
+    }
+    
+
+    // 각각의 가중치 설정 (1 ~ 100)
+    const userCondition = Math.floor(Math.random() * 80) + 51;
+    const opponentCondition = Math.floor(Math.random() * 80) + 51;
+
+    const scoreA = userStat.stats * userCondition;
+    const scoreB = opponentStat.stats * opponentCondition;
+
+    //경기 진행 로직
+    gamelogic.startgame(scoreA, scoreB);
+    
+});
 export default router;

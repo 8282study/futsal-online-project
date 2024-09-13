@@ -25,6 +25,7 @@ model Users {
   draw      Int       @default(0) @map("draw")     // 무
   loss      Int       @default(0) @map("loss")     // 패
 
+
   equippedPlayers EquippedPlayers[]
   ownedPlayers    OwnedPlayers[]
 }
