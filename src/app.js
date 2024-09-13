@@ -2,7 +2,8 @@ import express from 'express';
 import cookieParser from 'cookie-parser';
 import LogMiddleware from './middlewares/log.middlewares.js';
 import ErrorHandlingMiddleware from './middlewares/error-handling.middlewares.js';
-import UsersRouter from './src/routes/users.router.js';
+import UsersRouter from './routes/users.router.js';
+import TeamRouters from './routes/team.router.js'
 import 'dotenv/config'
 
 const app = express();
@@ -13,7 +14,7 @@ console.log(process.env)
 app.use(LogMiddleware);
 app.use(express.json());
 app.use(cookieParser());
-app.use('/api', [UsersRouter]);
+app.use('/api', [UsersRouter, TeamRouters]);
 app.use(ErrorHandlingMiddleware);
 
 app.listen(PORT, () => {
