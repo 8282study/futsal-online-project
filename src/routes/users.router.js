@@ -2,8 +2,8 @@ import express from 'express';
 import { prisma } from '../utils/prisma/index.js';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
-import { Prisma } from '@prisma/client';
 import 'dotenv/config';
+import authMiddleware from '../middlewares/auth.middleware.js';
 
 const SECRET_CODE = process.env.SECRET_CODE;
 
@@ -45,18 +45,10 @@ router.post('/auth/sign-up', async (req, res, next) => {
 
         const hashedPw = await bcrypt.hash(password, 10); // 비밀번호 해시화
 
-        // Database 변경 부분 트랜잭션
-        const user = await prisma.$transaction(
-            async (tx) => {
-                const user = await tx.Users.create({
-                    data: { email, password: hashedPw, name }, // 새로운 사용자 생성
-                });
-                return user;
-            },
-            {
-                isolationLevel: Prisma.TransactionIsolationLevel.ReadCommitted,
-            },
-        );
+        // 유저 정보 Database 등록
+        const user = await prisma.Users.create({
+            data: { email, password: hashedPw, name }, // 새로운 사용자 생성
+        });
 
         return res.status(201).json({
             data: {
