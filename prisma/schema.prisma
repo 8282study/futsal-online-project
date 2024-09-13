@@ -12,3 +12,53 @@ datasource db {
   provider = "mysql"
   url      = env("DATABASE_URL")
 }
+
+model Users {
+  userID    Int       @id @default(autoincrement()) @map("userID") // Primary key
+  email     String    @map("email")    // 이메일
+  password  String    @map("password") // 비밀번호
+  name      String    @map("name")     // 닉네임
+  cash      Int       @default(10000) @map("cash")     // 소지금
+  stats     Int       @default(0) @map("stats")    // 능력치
+  score     Int       @default(1000) @map("score")    // 점수
+  win       Int       @default(0) @map("win")      // 승
+  draw      Int       @default(0) @map("draw")     // 무
+  loss      Int       @default(0) @map("loss")     // 패
+
+  equippedPlayers EquippedPlayers[]
+  ownedPlayers    OwnedPlayers[]
+}
+
+model EquippedPlayers {
+  userID    Int    @map("userID")   // 회원ID (Foreign key)
+  playerID  Int    @map("playerID") // 선수ID (Foreign key)
+
+  user      Users  @relation(fields: [userID], references: [userID], onDelete: Cascade)
+  player    PlayersList @relation(fields: [playerID], references: [playerID], onDelete: Cascade)
+
+  @@id([userID, playerID]) // Composite primary key
+}
+
+model OwnedPlayers {
+  opID       Int    @id @default(autoincrement()) @map("opID") // Primary key (보유선수ID)
+  userID     Int    @map("userID")   // 회원ID (Foreign key)
+  playerID   Int    @map("playerID") // 선수ID (Foreign key)
+  playerName String @map("playerName") // 선수이름
+  powerLevel Int    @map("powerLevel") // 강화수치
+
+  user    Users      @relation(fields: [userID], references: [userID], onDelete: Cascade)
+  player  PlayersList @relation(fields: [playerID], references: [playerID], onDelete: Cascade)
+}
+
+model PlayersList {
+  playerID   Int    @id @default(autoincrement()) @map("playerID")   // Primary key (선수ID)
+  playerName String @map("playerName") // 선수이름
+  speed      Int    @map("speed")      // 스피드
+  finishing  Int    @map("finishing")  // 골 결정력
+  shootPower Int    @map("shootPower") // 슛 파워
+  defense    Int    @map("defense")    // 수비
+  stamina    Int    @map("stamina")    // 스태미너
+
+  equippedPlayers EquippedPlayers[]
+  ownedPlayers    OwnedPlayers[]
+}
