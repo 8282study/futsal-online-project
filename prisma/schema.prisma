@@ -18,12 +18,13 @@ model Users {
   email     String    @map("email")    // 이메일
   password  String    @map("password") // 비밀번호
   name      String    @map("name")     // 닉네임
-  cash      Int       @map("cash")     // 소지금
-  stats     Int       @map("stats")    // 능력치
-  score     Int       @map("score")    // 점수
-  win       Int       @map("win")      // 승
-  draw      Int       @map("draw")     // 무
-  loss      Int       @map("loss")     // 패
+  cash      Int       @default(10000) @map("cash")     // 소지금
+  stats     Int       @default(0) @map("stats")    // 능력치
+  score     Int       @default(1000) @map("score")    // 점수
+  win       Int       @default(0) @map("win")      // 승
+  draw      Int       @default(0) @map("draw")     // 무
+  loss      Int       @default(0) @map("loss")     // 패
+
 
   equippedPlayers EquippedPlayers[]
   ownedPlayers    OwnedPlayers[]

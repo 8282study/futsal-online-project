@@ -3,13 +3,12 @@ import cookieParser from 'cookie-parser';
 import LogMiddleware from './middlewares/log.middlewares.js';
 import ErrorHandlingMiddleware from './middlewares/error-handling.middlewares.js';
 import UsersRouter from './routes/users.router.js';
-import TeamRouters from './routes/team.router.js'
-import 'dotenv/config'
+import 'dotenv/config';
 
 const app = express();
-const PORT = 8282;
+const PORT = process.env.PORT;
 
-console.log(process.env)
+console.log(process.env);
 
 app.use(LogMiddleware);
 app.use(express.json());
@@ -18,5 +17,5 @@ app.use('/api', [UsersRouter, TeamRouters]);
 app.use(ErrorHandlingMiddleware);
 
 app.listen(PORT, () => {
-  console.log(PORT, '포트로 서버가 열렸어요!');
+    console.log(PORT, '포트로 서버가 열렸어요!');
 });
