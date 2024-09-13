@@ -3,6 +3,7 @@ import { prisma } from '../utils/prisma/index.js';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import { Prisma } from '@prisma/client';
+import authMiddleware from '../middlewares/auth.middleware.js';
 import 'dotenv/config';
 
 const SECRET_CODE = process.env.SECRET_CODE;

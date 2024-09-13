@@ -3,6 +3,7 @@ import cookieParser from 'cookie-parser';
 import LogMiddleware from './middlewares/log.middlewares.js';
 import ErrorHandlingMiddleware from './middlewares/error-handling.middlewares.js';
 import UsersRouter from './routes/users.router.js';
+import GachaRouter from "./routes/gacha.router.js"
 import 'dotenv/config';
 
 const app = express();
@@ -13,7 +14,7 @@ console.log(process.env);
 app.use(LogMiddleware);
 app.use(express.json());
 app.use(cookieParser());
-app.use('/api', [UsersRouter, TeamRouters]);
+app.use('/api', [UsersRouter,GachaRouter]);
 app.use(ErrorHandlingMiddleware);
 
 app.listen(PORT, () => {
