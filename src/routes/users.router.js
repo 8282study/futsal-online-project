@@ -2,58 +2,109 @@ import express from 'express';
 import { prisma } from '../utils/prisma/index.js';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
-import authMiddleware from '../middlewares/auth.middleware.js';
+import { Prisma } from '@prisma/client';
+import 'dotenv/config';
+
+const SECRET_CODE = process.env.SECRET_CODE;
 
 const router = express.Router();
 
-/* 사용자 회원가입 API */
-router.post('/sign-up', async (req, res, next) => {
+// 회원가입 라우터
+router.post('/auth/sign-up', async (req, res, next) => {
+    const {
+        body: { email, password, name }, // body에서 필요한 데이터 추출
+    } = req;
+    const validEmail = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/; // 유효한 이메일 형식
+
     try {
-        const { email, password } = req.body;
+        // 데이터베이스에서 userId에 해당하는 사용자가 있는지 확인
         const isExistUser = await prisma.users.findFirst({
-            where: {
-                email,
-            },
+            where: { email },
         });
 
+        // 이메일이 이미 존재하는 경우
         if (isExistUser) {
-            return res.status(409).json({ message: '이미 존재하는 이메일입니다.' });
+            return res.status(409).json({
+                errorMessage: '이미 존재하는 이메일 입니다.',
+            });
         }
 
-        // 사용자 비밀번호를 암호화합니다.
-        const hashedPassword = await bcrypt.hash(password, 10);
+        // 아이디 형식이 소문자와 숫자의 조합이 아닌 경우
+        if (!validEmail.test(email)) {
+            return res.status(400).json({
+                errorMessage: '이메일 형식이 아닙니다.',
+            });
+        }
 
-        // Users 테이블에 사용자를 추가합니다.
-        const user = await prisma.users.create({
+        // 비밀번호 길이가 6자리 미만인 경우
+        if (password.length < 6) {
+            return res.status(400).json({
+                errorMessage: '비밀번호는 최소 6자리 이상만 가능합니다.',
+            });
+        }
+
+        const hashedPw = await bcrypt.hash(password, 10); // 비밀번호 해시화
+
+        // Database 변경 부분 트랜잭션
+        const user = await prisma.$transaction(
+            async (tx) => {
+                const user = await tx.Users.create({
+                    data: { email, password: hashedPw, name }, // 새로운 사용자 생성
+                });
+                return user;
+            },
+            {
+                isolationLevel: Prisma.TransactionIsolationLevel.ReadCommitted,
+            },
+        );
+
+        return res.status(201).json({
             data: {
-                email,
-                password: hashedPassword, // 암호화된 비밀번호를 저장합니다.
+                userID: user.userID, // 생성된 사용자 번호 반환
+                email: user.email, // 생성된 사용자 아이디 반환
+                name: user.name, // 생성된 사용자 이름 반환
             },
         });
-
-        return res.status(201).json({ message: '회원가입이 완료되었습니다.' });
     } catch (err) {
-        next(err);
+        console.error(err);
+        next(err); // 에러 발생 시 다음 미들웨어로 전달
     }
 });
 
-/* 로그인 API */
-router.post('/sign-in', async (req, res, next) => {
-    const { email, password } = req.body;
+// 로그인 라우터
+router.post('/auth/sign-in', async (req, res, next) => {
+    const {
+        body: { email, password }, // Body에서 userId와 userPw 추출
+    } = req;
+    try {
+        // 데이터베이스에서 userId에 해당하는 사용자가 있는지 확인
+        const isExistUser = await prisma.users.findFirst({
+            where: { email },
+        });
 
-    const user = await prisma.users.findFirst({ where: { email } });
+        // 사용자가 존재하지 않는 경우
+        if (!isExistUser) {
+            return res.status(400).json({
+                errorMessage: '없는 아이디 입니다.',
+            });
+        }
 
-    if (!user) {
-        return res.status(401).json({ message: '존재하지 않는 사용자입니다.' });
+        // 비밀번호가 틀린 경우
+        if (!(await bcrypt.compare(password, isExistUser.password))) {
+            return res.status(401).json({
+                errorMessage: '틀린 비밀번호 입니다.',
+            });
+        }
+
+        const token = jwt.sign({ userID: isExistUser.userID }, SECRET_CODE); // JWT 토큰 생성
+        res.setHeader('Authorization', `Bearer ${token}`); // 응답 헤더에 토큰 설정
+        return res
+            .status(200)
+            .json({ message: '로그인 성공, 헤더에 토큰값이 반환되었습니다.' }); // 성공 메시지 반환
+    } catch (err) {
+        console.error(err);
+        next(err); // 에러 발생 시 다음 미들웨어로 전달
     }
-    if (!(await bcrypt.compare(password, user.password))) {
-        return res.status(401).json({ message: '비밀번호가 일치하지 않습니다.' });
-    }
-    const token = jwt.sign({ userId: user.userId }, 'custom-secret-key');
-
-    res.header('authorization', `Bearer ${token}`);
-    return res.status(200).json({ message: '로그인에 성공하였습니다.' });
 });
 
-//test2
 export default router;
