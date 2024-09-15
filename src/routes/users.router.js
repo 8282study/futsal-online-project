@@ -135,28 +135,44 @@ router.patch('/user/password', authMiddleware, async (req, res, next) => {
             select: { password: true },
         });
 
-        if (!user)
-            res.status(500).json({
-                errorMessage:
-                    ' 서버 오류로 인한 유저정보 획득에 실패하였습니다.',
+        // 유저가 없는 경우
+        if (!user) {
+            return res.status(404).json({
+                errorMessage: '유저 정보를 찾을 수 없습니다.',
             });
+        }
 
-        const combinedPw = oldPassword + PEPPER; // 기존 비밀번호와 비교하기 위하여 페퍼 적용
-        if (!(await bcrypt.compare(combinedPw, user.password))) {
+        const combinedOldPw = oldPassword + PEPPER; // 기존 비밀번호와 비교하기 위하여 페퍼 적용
+        if (!(await bcrypt.compare(combinedOldPw, user.password))) {
             return res.status(401).json({
                 errorMessage: '기존 비밀번호와 일치하지 않습니다.',
             });
         }
-        const combinedNewPw = newPassword + PEPPER; // 페퍼 적용
-        const hashedPw = await bcrypt.hash(combinedNewPw, 10); // 페퍼 컴바인 된 비밀번호 해시화
+
+        // 새로운 비밀번호가 기존 비밀번호와 같은지 확인
+        const combinedNewPw = newPassword + PEPPER;
+        if (await bcrypt.compare(combinedNewPw, user.password)) {
+            return res.status(400).json({
+                errorMessage: '새 비밀번호는 기존 비밀번호와 같을 수 없습니다.',
+            });
+        }
+
+        const hashedNewPw = await bcrypt.hash(combinedNewPw, 10); // 페퍼 적용 후 해시화
 
         // 데이터베이스 적용
         await prisma.users.update({
             where: { userID },
-            data: { password: hashedPw },
+            data: { password: hashedNewPw },
         });
 
-        return res.status(200).json({ message: '비밀번호 변경 완료' });
+        // 새 토큰 생성 및 헤더 지정
+        const newToken = jwt.sign({ userID }, SECRET_CODE);
+        res.setHeader('Authorization', newToken);
+
+        return res.status(200).json({
+            message: '비밀번호 변경 완료',
+            newToken, // 클라이언트에게 새 토큰 전달
+        });
     } catch (err) {
         console.error(err);
         next(err);
@@ -226,6 +242,42 @@ router.get('/user/cash', authMiddleware, async (req, res, next) => {
     } catch (err) {
         next(err); // 에러 발생 시 다음 미들웨어로 전달
     }
+});
+
+// 랭킹 조회
+router.get('/user/rank', async (req, res, next) => {
+    // 유저 테이블 가져오기
+    const results = await prisma.users.findMany({
+        select: {
+            name: true,
+            score: true,
+            win: true,
+            draw: true,
+            loss: true,
+        },
+    });
+    // 받아오기 실패 시 에러
+    if (!results) throw new Error('DB를 불러오는데 문제가 생겼습니다.');
+
+    // 승률 구하기
+    const addWinRate = results.map((result) => {
+        const totalGame = result.win + result.draw + result.loss;
+        const winRate = totalGame > 0 ? (result.win / totalGame) * 100 : 0;
+        return {
+            ...result,
+            winRate: winRate.toFixed(0) + '%',
+        };
+    });
+
+    // 점수 기준 내림차순 정렬, 중복 시 승률 기준으로 내림차순
+    const rank = addWinRate.sort((a, b) => {
+        if (b.score === a.score)
+            return parseInt(b.winRate, 10) - parseInt(a.winRate, 10);
+        return b.score - a.score;
+    });
+
+    // 객체 배열로 반환
+    return res.status(200).json({ data: rank });
 });
 
 router.post('/games/play/:userId', authMiddleware, async (req, res, next) => {
