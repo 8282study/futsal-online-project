@@ -8,12 +8,12 @@ import 'dotenv/config';
 const app = express();
 const PORT = process.env.PORT;
 
-console.log(process.env);
+console.log(process.env.PORT);
 
 app.use(LogMiddleware);
 app.use(express.json());
 app.use(cookieParser());
-app.use('/api', [UsersRouter, TeamRouters]);
+app.use('/api', [UsersRouter]);
 app.use(ErrorHandlingMiddleware);
 
 app.listen(PORT, () => {

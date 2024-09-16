@@ -3,6 +3,7 @@ import { prisma } from '../utils/prisma/index.js';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import 'dotenv/config';
+import gamelogic from '../gameLogic.js';
 import authMiddleware from '../middlewares/auth.middleware.js';
 
 const SECRET_CODE = process.env.SECRET_CODE;
@@ -280,46 +281,99 @@ router.get('/user/rank', async (req, res, next) => {
     return res.status(200).json({ data: rank });
 });
 
-router.post('/games/play/:userId', authMiddleware, async (req, res, next) => {
-    const userId = req.user;
-    const opponentId = req.params;
+// 상대방과의 게임 시작
+router.post(
+    '/games/play/:opponentID',
+    authMiddleware,
+    async (req, res, next) => {
+        const {
+            params: { opponentID },
+            user: { userID },
+        } = req;
 
-    const userStat = await prisma.users.findFirst({
-        where: { userId: +userId },
-        select: {
-            stats: true,
-        },
-    });
+        const userStat = await prisma.users.findFirst({
+            where: { userID: +userID },
+            select: {
+                stats: true,
+                score: true,
+                win: true,
+                draw: true,
+                loss: true,
+            },
+        });
 
-    const opponentStat = await prisma.users.findFirst({
-        where: { userId: +opponentId },
-        select: {
-            stats: true,
-        },
-    });
+        const opponentStat = await prisma.users.findFirst({
+            where: { userID: +opponentID },
+            select: {
+                stats: true,
+                score: true,
+                win: true,
+                draw: true,
+                loss: true,
+            },
+        });
 
-    //양쪽 팀 불러오기
-    const userTeam = await prisma.EquippedPlayers.findMany({
-        where: { userId: +userId },
-    });
+        //양쪽 팀 불러오기
+        const userTeam = await prisma.equippedPlayers.findMany({
+            where: { userID: +userID },
+        });
 
-    const opponentTeam = await prisma.EquippedPlayers.findMany({
-        where: { userId: +opponentId },
-    });
+        const opponentTeam = await prisma.equippedPlayers.findMany({
+            where: { userID: +opponentID },
+        });
 
-    //양쪽 팀이 3명이 맞는지 확인
-    if (gamelogic.checkAbleGame(userTeam, opponentTeam)) {
-        return res.status(401).json({ message: '팀원이 부족합니다.' });
-    }
+        //양쪽 팀이 3명이 맞는지 확인
+        if (gamelogic.checkAbleGame(userTeam, opponentTeam) === true) {
+            return res.status(401).json({ message: '팀원이 부족합니다.' });
+        }
 
-    // 각각의 가중치 설정 (1 ~ 100)
-    const userCondition = Math.floor(Math.random() * 80) + 51;
-    const opponentCondition = Math.floor(Math.random() * 80) + 51;
+        // 각각의 가중치 설정 (1 ~ 100)
+        const userCondition = Math.floor(Math.random() * 80) + 51;
+        const opponentCondition = Math.floor(Math.random() * 80) + 51;
 
-    const scoreA = userStat.stats * userCondition;
-    const scoreB = opponentStat.stats * opponentCondition;
+        const scoreA = userStat.stats * userCondition;
+        const scoreB = opponentStat.stats * opponentCondition;
 
-    //경기 진행 로직
-    gamelogic.startgame(scoreA, scoreB);
-});
+        //경기 진행 로직
+        const result = gamelogic.startgame(scoreA, scoreB);
+        console.log(result);
+        if (result[0] === 'A') {
+            const win = await prisma.users.update({
+                where: { userID: +userID },
+                data: { 
+                    score: userStat.score + 10,
+                    win : userStat.win + 1
+                 },
+            });
+
+            const lose = await prisma.users.update({
+                where: { userID: +opponentID },
+                data: { 
+                    score: opponentStat.score - 10,
+                    loss : opponentStat.loss + 1,
+                 },
+            });
+        }
+        if (result[0] === 'B') {
+            const win = await prisma.users.update({
+                where: { userID: +userID },
+                data: { 
+                    score: userStat.score - 10,
+                    loss : userStat.loss + 1,
+                 },
+            });
+
+            const lose = await prisma.users.update({
+                where: { userID: +opponentID },
+                data: { 
+                    score: opponentStat.score + 10,
+                    win : opponentStat.win + 1
+                 },
+            });
+        }
+
+        return res.status(200).json({ data: result });
+    },
+);
+
 export default router;
