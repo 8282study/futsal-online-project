@@ -11,41 +11,58 @@ const router = express.Router();
 
 router.post('/gacha', authMiddleware, async (req, res, next) => {
     try {
-        const { userID } = req.user; // 로그인한 사용자 정보에서 userId 추출
+        const { userID } = req.user; // 로그인한 사용자 정보에서 userID 추출
         
+        // 유저 정보를 먼저 가져와 소지금 확인
+        const user = await prisma.Users.findUnique({
+            where: { userID: userID },
+        });
+
+        if (!user) {
+            return res.status(404).json({ error: "유저 정보가 없습니다" });
+        }
+
+        // 소지금이 100원 미만일 경우 에러 반환
+        if (user.cash < 100) {
+            return res.status(400).json({ error: "캐쉬가 충분하지 않습니다" });
+        }
+
         // PlayerList에서 랜덤으로 하나의 캐릭터를 선택
         const post1 = await prisma.PlayerList.findFirst({
             orderBy: {
-                // 랜덤으로 정렬
-                playerID: 'asc'
-            },
-            skip: Math.floor(Math.random() * await prisma.PlayerList.count()) // 랜덤한 characterId 추출
+                // MySQL의 경우 무작위 정렬을 사용
+                RAND: true
+            }
         });
 
         // 만약 찾은 캐릭터가 없을 경우
         if (!post1) {
-            return res.status(404).json({ error: "No character found" });
+            return res.status(404).json({ error: "캐릭터가 없습니다." });
         }
 
-        // EquippedPlayer에 데이터를 추가
-        const post = await prisma.EquippedPlayer.create({
+        // ownedPlayers에 데이터를 추가
+        const post = await prisma.ownedPlayers.create({
             data: {
-                playerID: post1.playerID, // 선택한 캐릭터의 characterId
-                playerName: post1.playerName,               // 선택한 캐릭터의 name
-                speed:post1.speed,
-                finishing:post1.finishing,
-                shootPower:post1.shootPower,
-                defense:post1.defense,
-                stamina:post1.stamina
+                userID: userID,
+                playerID: post1.playerID, // 선택한 캐릭터의 playerID
+                playerName: post1.playerName // 선택한 캐릭터의 playerName
             }
         });
 
+        // 소지금을 100원 감소시킴
+        const updatedUser = await prisma.Users.update({
+            where: { userID: userID },
+            data: {
+                cash: {
+                    decrement: 100 // 소지금 100원 감소
+                }
+            }
+        });
 
-        return res.status(201).json({ data: post }); // 성공적으로 추가된 데이터 반환
+        return res.status(201).json({ data: post, updatedCash: updatedUser.cash }); // 성공적으로 추가된 데이터와 업데이트된 소지금 반환
     } catch (error) {
         next(error); // 에러 발생 시 다음 미들웨어로 에러 전달
     }
 });
-
 
 export default router;
