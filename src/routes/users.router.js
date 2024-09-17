@@ -108,7 +108,7 @@ router.post('/auth/sign-in', async (req, res, next) => {
         // 로그인 성공 메시지와 함께 토큰 반환
         return res.status(200).json({
             message: '로그인 성공, 헤더에 토큰값이 반환되었습니다.',
-            token,
+            token: `Bearer ${token}`,
         });
     } catch (err) {
         console.error(err);
@@ -171,7 +171,7 @@ router.patch('/user/password', authMiddleware, async (req, res, next) => {
 
         return res.status(200).json({
             message: '비밀번호 변경 완료',
-            newToken, // 클라이언트에게 새 토큰 전달
+            token: `Bearer ${newToken}`, // 클라이언트에게 새 토큰 전달
         });
     } catch (err) {
         console.error(err);
