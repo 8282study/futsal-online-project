@@ -2,12 +2,12 @@ import express from 'express';
 import { prisma } from '../utils/prisma/index.js';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
-import { Prisma } from '@prisma/client';
 import authMiddleware from '../middlewares/auth.middleware.js';
 import 'dotenv/config';
 
 const SECRET_CODE = process.env.SECRET_CODE;
 const router = express.Router();
+
 
 router.post('/gacha', authMiddleware, async (req, res, next) => {
     try {
@@ -28,11 +28,12 @@ router.post('/gacha', authMiddleware, async (req, res, next) => {
         }
 
         // PlayerList에서 랜덤으로 하나의 캐릭터를 선택
-        const post1 = await prisma.PlayerList.findFirst({
+        const post1 = await prisma.PlayersList.findFirst({
             orderBy: {
-                // MySQL의 경우 무작위 정렬을 사용
-                RAND: true
-            }
+                // 랜덤으로 정렬
+                playerID: 'asc'
+            },
+            skip: Math.floor(Math.random() * await prisma.PlayersList.count()) // 랜덤한 characterId 추출
         });
 
         // 만약 찾은 캐릭터가 없을 경우
@@ -45,7 +46,8 @@ router.post('/gacha', authMiddleware, async (req, res, next) => {
             data: {
                 userID: userID,
                 playerID: post1.playerID, // 선택한 캐릭터의 playerID
-                playerName: post1.playerName // 선택한 캐릭터의 playerName
+                playerName: post1.playerName, // 선택한 캐릭터의 playerName
+                powerLevel:100
             }
         });
 
@@ -58,6 +60,7 @@ router.post('/gacha', authMiddleware, async (req, res, next) => {
                 }
             }
         });
+
 
         return res.status(201).json({ data: post, updatedCash: updatedUser.cash }); // 성공적으로 추가된 데이터와 업데이트된 소지금 반환
     } catch (error) {
