@@ -63,9 +63,34 @@ router.post('/gacha', authMiddleware, async (req, res, next) => {
 
 
         return res.status(201).json({ data: post, updatedCash: updatedUser.cash }); // 성공적으로 추가된 데이터와 업데이트된 소지금 반환
+
+        
     } catch (error) {
         next(error); // 에러 발생 시 다음 미들웨어로 에러 전달
     }
 });
+
+router.get('/gacha/:userID', async (req, res, next) => {
+    try {
+        const { userID } = req.params;
+        const post = await prisma.ownedPlayers.findMany({
+            where: {
+                userID: +userID
+            },
+            select: {
+                opID: true,
+                playerID: true,
+                playerName: true,
+                powerLevel: true,
+            }
+        });
+
+        return res.status(200).json({ data: post });
+    } catch (error) {
+        next(error);
+    }
+});
+
+
 
 export default router;
