@@ -1,34 +1,94 @@
 // /**담당자: 김성록 */
-// import express from 'express';
-// import { prisma } from '../utils/prisma/index.js';
-// import authMiddleware from '../middlewares/auth.middleware.js';
+import express from 'express';
+import { prisma } from '../utils/prisma/index.js';
+import authMiddleware from '../middlewares/auth.middleware.js';
 
-// //팀인원은 3명까지만
+const router = express.Router();
 
-// const router = express.Router();
+router.post('/auth/createTeam', authMiddleware, async (req, res, next) => {
+    const { userID, playerID } = req.body;
 
-// router.post('/auth/createTeam', async (req, res, next)=>{
-//     const { userID, playerID } = req.body;
+    const checkID = await prisma.ownedPlayers.findFirst({
+        where: {
+            userID: userID,
+            playerID: playerID,
+        },
+    });
 
-//     //로그인한사람인지 확인
+    if (checkID) {
+        console.log('보유한 선수입니다.');
+        try {
+            const playerCount = await prisma.equippedPlayers.count({
+                where: {
+                    userID: userID,
+                },
+            });
 
-//     //보유선수 리스트에 추가할 플레이어 있는지 확인
-//     // OwnedPlayers에 userID && playerID 있는지 검사
-//     const checkID = await prisma.OwnedPlayers
-//     if( )
+            if (playerCount < 3) {
+                const newEquippedPlayer = await prisma.equippedPlayers.create({
+                    data: {
+                        userID: userID,
+                        playerID: playerID,
+                    },
+                });
+                return res.status(201).json({ newEquippedPlayer });
+            } else {
+                return res
+                    .status(400)
+                    .json({ errorMessage: '팀은 최대 3명까지만 가능합니다.' });
+            }
+        } catch (error) {
+            console.error('오류:', error);
+            return res
+                .status(500)
+                .json({ errorMessage: '서버 오류가 발생했습니다.' });
+        }
+    } else {
+        console.log('새로운 선수입니다.');
+        return res
+            .status(400)
+            .json({ errorMessage: '플레이어가 보유되지 않았습니다.' });
+    }
+});
 
+router.delete('/auth/deleteTeam', authMiddleware, async (req, res, next) => {
+    const { userID, playerID } = req.body;
 
+    if (!userID || !playerID) {
+        return res
+            .status(400)
+            .json({ errorMessage: 'userID 또는 playerID가 누락되었습니다.' });
+    }
 
-//     // const mexTeam = await prisma.equippedPlayers.count({
-//     //     while: { userID },
-//     // })
+    try {
+        const existingPlayer = await prisma.equippedPlayers.findFirst({
+            where: {
+                userID: userID,
+                playerID: playerID,
+            },
+        });
 
-//     // if( mexTeam > 3 ) 
-//     return res.status(201).json({ userID })
+        if (existingPlayer) {
+            const deletedPlayer = await prisma.equippedPlayers.delete({
+                where: {
+                    userID_playerID: {
+                        userID: userID,
+                        playerID: playerID,
+                    },
+                },
+            });
+            return res.status(200).json({ deletedPlayer });
+        } else {
+            return res
+                .status(404)
+                .json({ errorMessage: '삭제할 팀원이 존재하지 않습니다.' });
+        }
+    } catch (error) {
+        console.error('오류:', error);
+        return res
+            .status(500)
+            .json({ errorMessage: '서버 오류가 발생했습니다.' });
+    }
+});
 
-
-//     //출전선수 테이블에 userID, playerID 추가
-//     //출전선수 테이블에 동일한 userID 3개 있으면 에러반환
-// });
-
-// export default router;
+export default router;

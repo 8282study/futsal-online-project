@@ -37,7 +37,7 @@ model EquippedPlayers {
   user      Users  @relation(fields: [userID], references: [userID], onDelete: Cascade)
   player    PlayersList @relation(fields: [playerID], references: [playerID], onDelete: Cascade)
 
-  @@id([userID, playerID]) // Composite primary key
+  @@id([userID, playerID])
 }
 
 model OwnedPlayers {
