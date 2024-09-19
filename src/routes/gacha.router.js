@@ -71,9 +71,18 @@ router.post('/gacha', authMiddleware, async (req, res, next) => {
     }
 });
 
-router.get('/gacha/:userID', async (req, res, next) => {
+router.get('/gacha/:userID', authMiddleware, async (req, res, next) => {
     try {
         const { userID } = req.params;
+
+        // 로그인한 사용자의 ID
+        const loggedInUserID = req.user.userID;
+
+        // 요청한 userID와 로그인한 userID가 다를 경우 접근 금지
+        if (+userID !== loggedInUserID) {
+            return res.status(403).json({ error: "조회할 수 없는 계정입니다." });
+        }
+
         const post = await prisma.ownedPlayers.findMany({
             where: {
                 userID: +userID
@@ -85,6 +94,10 @@ router.get('/gacha/:userID', async (req, res, next) => {
                 powerLevel: true,
             }
         });
+        
+        if (!post || post.length === 0) {
+            return res.status(404).json({ error: "보유하고 있는 캐릭터가 없습니다." });
+        }
 
         return res.status(200).json({ data: post });
     } catch (error) {
