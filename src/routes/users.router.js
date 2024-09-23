@@ -5,7 +5,7 @@ import jwt from 'jsonwebtoken';
 import { Prisma } from '@prisma/client';
 import authMiddleware from '../middlewares/auth.middleware.js';
 import 'dotenv/config';
-import gamelogic from '../gameLogic.js';
+import gamelogic from '../gamelogic.js'
 
 const SECRET_CODE = process.env.SECRET_CODE;
 const PEPPER = process.env.PEPPER;
