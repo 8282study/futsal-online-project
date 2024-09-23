@@ -7,12 +7,13 @@ const router = express.Router();
 
 router.post('/auth/createTeam', authMiddleware, async (req, res, next) => {
     const { userID } = req.user;
-    const { playerID } = req.body;
+    const { playerID, powerLevel } = req.body;
 
     const checkID = await prisma.ownedPlayers.findFirst({
         where: {
             userID: userID,
             playerID: playerID,
+            powerLevel: powerLevel,
         },
         select: { powerLevel: true },
     });
@@ -33,9 +34,50 @@ router.post('/auth/createTeam', authMiddleware, async (req, res, next) => {
                         userID: userID,
                         playerID: playerID,
                         powerLevel: powerLevel,
+
                     },
                 });
-                return res.status(201).json({ newEquippedPlayer, powerLevel });
+
+                const playerStat = await prisma.playersList.findFirst({
+                    where: {
+                        playerID: playerID,
+                    },
+                    select: {
+                        speed: true,
+                        finishing: true,
+                        shootPower: true,
+                        defense: true,
+                        stamina: true,
+                    },
+                });
+
+                const userStat = await prisma.users.findFirst({
+                    where: {
+                        userID: userID,
+                    },
+                    select: {
+                        stats: true,
+                    },
+                });
+
+                let totalStat =
+                    userStat.stats +
+                    playerStat.speed +
+                    playerStat.finishing +
+                    playerStat.shootPower +
+                    playerStat.defense +
+                    playerStat.stamina;
+
+                const addStat = await prisma.users.update({
+                    where: {
+                        userID: userID,
+                    },
+                    data: {
+                        stats: totalStat,
+                    },
+                });
+
+                return res.status(201).json({ newEquippedPlayer });
             } else {
                 return res
                     .status(400)
@@ -82,6 +124,48 @@ router.delete('/auth/deleteTeam', authMiddleware, async (req, res, next) => {
                     },
                 },
             });
+
+            //선수 해제시 stat 감소
+
+            const playerStat = await prisma.playersList.findFirst({
+                where: {
+                    playerID: playerID,
+                },
+                select: {
+                    speed: true,
+                    finishing: true,
+                    shootPower: true,
+                    defense: true,
+                    stamina: true,
+                },
+            });
+
+            const userStat = await prisma.users.findFirst({
+                where: {
+                    userID: userID,
+                },
+                select: {
+                    stats: true,
+                },
+            });
+
+            let totalStat =
+                userStat.stats -
+                playerStat.speed -
+                playerStat.finishing -
+                playerStat.shootPower -
+                playerStat.defense -
+                playerStat.stamina;
+
+            const subStat = await prisma.users.update({
+                where: {
+                    userID: userID,
+                },
+                data: {
+                    stats: totalStat,
+                },
+            });
+
             return res.status(200).json({ deletedPlayer });
         } else {
             return res

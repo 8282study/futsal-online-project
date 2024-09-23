@@ -33,7 +33,7 @@ model Users {
 model EquippedPlayers {
   userID    Int    @map("userID")   // 회원ID (Foreign key)
   playerID  Int    @map("playerID") // 선수ID (Foreign key)
-  powerLevel Int    @map("powerLevel")
+  powerLevel Int    @map("powerLevel") // 강화수치
 
   user      Users  @relation(fields: [userID], references: [userID], onDelete: Cascade)
   player    PlayersList @relation(fields: [playerID], references: [playerID], onDelete: Cascade)
