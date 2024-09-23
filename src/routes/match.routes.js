@@ -22,8 +22,8 @@ router.post('/games/randomplay', authMiddleware, async (req, res, next) => {
 
         const userScore = currentUser.score;
 
-        // ±300점 범위의 상대방 찾기, 상대방이 선수 3명을 갖춘 경우만
-        const opponent = await prisma.users.findFirst({
+        // ±300점 범위의 상대방들 목록 가져오기 (equippedPlayers 테이블에 3명의 선수를 가진 상대만)
+        const potentialOpponents = await prisma.users.findMany({
             where: {
                 score: {
                     gte: userScore - 300,
@@ -32,14 +32,10 @@ router.post('/games/randomplay', authMiddleware, async (req, res, next) => {
                 userID: {
                     not: +userID, // 본인 제외
                 },
-                // equippedPlayers 테이블에서 3명의 선수를 갖춘 상대만 찾기
                 equippedPlayers: {
-                    some: {
-                        userID: { not: +userID } // 본인이 아닌 상대방
-                    },
+                    some: {} // 선수 정보가 있는 상대만
                 },
             },
-            // 3명의 선수가 있는지 확인하는 로직
             include: {
                 _count: {
                     select: { equippedPlayers: true }
@@ -47,9 +43,16 @@ router.post('/games/randomplay', authMiddleware, async (req, res, next) => {
             }
         });
 
-        if (!opponent || opponent._count.equippedPlayers !== 3) {
+        // 3명의 선수를 갖춘 상대만 필터링
+        const validOpponents = potentialOpponents.filter(opponent => opponent._count.equippedPlayers === 3);
+
+        if (validOpponents.length === 0) {
             return res.status(404).json({ message: '시합을 찾을 수 없습니다.' });
         }
+
+        // 랜덤으로 한 명의 상대 선택
+        const randomIndex = Math.floor(Math.random() * validOpponents.length);
+        const opponent = validOpponents[randomIndex];
 
         // 현재 사용자와 상대방의 팀 정보 가져오기
         const userTeam = await prisma.equippedPlayers.findMany({
@@ -106,9 +109,16 @@ router.post('/games/randomplay', authMiddleware, async (req, res, next) => {
             data: opponentUpdateData
         });
 
+        // resultteam 추가: 승리와 패배 정보를 포함하여 응답
+        const resultteam = {
+            winner: isUserWinner ? userID : opponent.userID,
+            loser: isUserWinner ? opponent.userID : userID
+        };
+
         return res.status(200).json({ 
             message: '게임이 완료되었습니다.', 
-            result: result 
+            result: result,
+            resultteam: resultteam // 승패 정보 포함
         });
 
     } catch (error) {
@@ -116,4 +126,5 @@ router.post('/games/randomplay', authMiddleware, async (req, res, next) => {
         next(error);
     }
 });
+
 export default router;
