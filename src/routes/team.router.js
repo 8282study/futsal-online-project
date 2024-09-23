@@ -19,7 +19,7 @@ router.post('/auth/createTeam', authMiddleware, async (req, res, next) => {
     });
 
     if (checkID) {
-        const { powerLevel } = checkID;
+
 
         try {
             const playerCount = await prisma.equippedPlayers.count({
