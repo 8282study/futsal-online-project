@@ -6,7 +6,8 @@ import authMiddleware from '../middlewares/auth.middleware.js';
 const router = express.Router();
 
 router.post('/auth/createTeam', authMiddleware, async (req, res, next) => {
-    const { userID, playerID, powerLevel } = req.body;
+    const { userID } = req.user;
+    const { playerID, powerLevel } = req.body;
 
     const checkID = await prisma.ownedPlayers.findFirst({
         where: {
@@ -14,10 +15,12 @@ router.post('/auth/createTeam', authMiddleware, async (req, res, next) => {
             playerID: playerID,
             powerLevel: powerLevel,
         },
+        select: { powerLevel: true },
     });
 
     if (checkID) {
-        console.log('보유한 선수입니다.');
+        const { powerLevel } = checkID;
+
         try {
             const playerCount = await prisma.equippedPlayers.count({
                 where: {
@@ -31,6 +34,7 @@ router.post('/auth/createTeam', authMiddleware, async (req, res, next) => {
                         userID: userID,
                         playerID: playerID,
                         powerLevel: powerLevel,
+
                     },
                 });
 
@@ -94,7 +98,8 @@ router.post('/auth/createTeam', authMiddleware, async (req, res, next) => {
 });
 
 router.delete('/auth/deleteTeam', authMiddleware, async (req, res, next) => {
-    const { userID, playerID } = req.body;
+    const { userID } = req.user;
+    const { playerID } = req.body;
 
     if (!userID || !playerID) {
         return res
