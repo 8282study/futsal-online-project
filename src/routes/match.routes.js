@@ -6,14 +6,14 @@ import 'dotenv/config';
 
 const router = express.Router();
 
-router.get('/match', authMiddleware, async (req, res, next) => {
+router.post('/games/randomplay', authMiddleware, async (req, res, next) => {
     try {
         const { userID } = req.user;
 
         // 현재 사용자의 정보 및 점수 가져오기
         const currentUser = await prisma.users.findUnique({
             where: { userID: +userID },
-            select: { score: true }
+            select: { score: true, stats: true, win: true, draw: true, loss: true }
         });
 
         if (!currentUser) {
@@ -22,7 +22,7 @@ router.get('/match', authMiddleware, async (req, res, next) => {
 
         const userScore = currentUser.score;
 
-        // ±10점 범위의 상대방 찾기
+        // ±10점 범위의 상대방 찾기 (랜덤으로 한 명)
         const opponent = await prisma.users.findFirst({
             where: {
                 score: {
@@ -33,26 +33,22 @@ router.get('/match', authMiddleware, async (req, res, next) => {
                     not: +userID, // 자신 제외
                 }
             },
-            select: {
-                userID: true,
-                score: true,
-                name: true,
-            }
+            select: { userID: true, score: true, stats: true, win: true, draw: true, loss: true }
         });
 
         if (!opponent) {
-            return res.status(404).json({ message: '시합을 찾을수없습니다' });
+            return res.status(404).json({ message: '시합을 찾을 수 없습니다.' });
         }
 
         // 현재 사용자와 상대방의 팀 정보 가져오기 (EquippedPlayers 테이블 사용)
         const userTeam = await prisma.equippedPlayers.findMany({
             where: { userID: +userID },
-            select: { playerID: true, userID: true }
+            select: { playerID: true, powerLevel: true }
         });
 
         const opponentTeam = await prisma.equippedPlayers.findMany({
             where: { userID: opponent.userID },
-            select: { playerID: true, userID: true }
+            select: { playerID: true, powerLevel: true }
         });
 
         // 게임 가능 여부 확인 (양 팀 모두 3명의 플레이어가 있는지 확인)
@@ -60,34 +56,57 @@ router.get('/match', authMiddleware, async (req, res, next) => {
             return res.status(400).json({ message: '3명의 선수를 가지고 있지 않습니다.' });
         }
 
-        // 두 팀의 총 파워레벨 계산
-        const userPower = userTeam.reduce((sum, player) => sum + player.powerLevel, 0);
-        const opponentPower = opponentTeam.reduce((sum, player) => sum + player.powerLevel, 0);
+        // 각각의 가중치 설정 (51 ~ 130 범위)
+        const userCondition = Math.floor(Math.random() * 80) + 51;
+        const opponentCondition = Math.floor(Math.random() * 80) + 51;
 
-        // 게임 시작
-        const gameResult = gamelogic.startgame(userPower, opponentPower);
+        // 각 유저의 점수와 가중치 반영
+        const scoreA = currentUser.stats * userCondition;
+        const scoreB = opponent.stats * opponentCondition;
 
-        // 승리한 유저 판단 및 점수 업데이트
-        let winnerID;
-        if (gameResult.startsWith("A 유저 승리")) {
-            winnerID = userID; // 현재 사용자가 승리
-        } else if (gameResult.startsWith("B 유저 승리")) {
-            winnerID = opponent.userID; // 상대방 사용자가 승리
+        // 경기 진행 로직
+        const result = gamelogic.startgame(scoreA, scoreB);
+        console.log(result);
+
+        if (result[0] === 'A') {
+            // 유저가 승리한 경우
+            await prisma.users.update({
+                where: { userID: +userID },
+                data: { 
+                    score: currentUser.score + 10,
+                    win: currentUser.win + 1
+                }
+            });
+
+            // 상대방이 패배한 경우
+            await prisma.users.update({
+                where: { userID: +opponent.userID },
+                data: { 
+                    score: opponent.score - 10,
+                    loss: opponent.loss + 1
+                }
+            });
+        } else if (result[0] === 'B') {
+            // 유저가 패배한 경우
+            await prisma.users.update({
+                where: { userID: +userID },
+                data: { 
+                    score: currentUser.score - 10,
+                    loss: currentUser.loss + 1
+                }
+            });
+
+            // 상대방이 승리한 경우
+            await prisma.users.update({
+                where: { userID: +opponent.userID },
+                data: { 
+                    score: opponent.score + 10,
+                    win: opponent.win + 1
+                }
+            });
         }
 
-        // 승리한 유저의 점수 업데이트 (+5점 예시)
-        await prisma.users.update({
-            where: { userID: winnerID },
-            data: { score: { increment: 5 } } // 점수를 5점 증가시킴
-        });
-
-        return res.status(200).json({
-            message: 'Game completed',
-            result: gameResult,
-            userTeam: userTeam,
-            opponentTeam: opponentTeam,
-            winnerID: winnerID,
-        });
+        return res.status(200).json({ data: result });
 
     } catch (error) {
         next(error);

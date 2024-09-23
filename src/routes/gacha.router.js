@@ -44,7 +44,7 @@ router.post('/gacha', authMiddleware, async (req, res, next) => {
                 userID: userID,
                 playerID: post1.playerID, // 선택한 캐릭터의 playerID
                 playerName: post1.playerName, // 선택한 캐릭터의 playerName
-                powerLevel:post1.powerLevel,
+                powerLevel:1
             }
         });
 
