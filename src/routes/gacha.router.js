@@ -1,11 +1,8 @@
 import express from 'express';
 import { prisma } from '../utils/prisma/index.js';
-import bcrypt from 'bcrypt';
-import jwt from 'jsonwebtoken';
 import authMiddleware from '../middlewares/auth.middleware.js';
 import 'dotenv/config';
 
-const SECRET_CODE = process.env.SECRET_CODE;
 const router = express.Router();
 
 
@@ -78,10 +75,10 @@ router.get('/gacha/:userID', authMiddleware, async (req, res, next) => {
         // 로그인한 사용자의 ID
         const loggedInUserID = req.user.userID;
 
-        // 요청한 userID와 로그인한 userID가 다를 경우 접근 금지
-        if (+userID !== loggedInUserID) {
-            return res.status(403).json({ error: "조회할 수 없는 계정입니다." });
-        }
+        // // 요청한 userID와 로그인한 userID가 다를 경우 접근 금지
+        // if (+userID !== loggedInUserID) {
+        //     return res.status(403).json({ error: "조회할 수 없는 계정입니다." });
+        // }
 
         const post = await prisma.ownedPlayers.findMany({
             where: {
@@ -94,10 +91,10 @@ router.get('/gacha/:userID', authMiddleware, async (req, res, next) => {
                 powerLevel: true,
             }
         });
-        
-        if (!post || post.length === 0) {
-            return res.status(404).json({ error: "보유하고 있는 캐릭터가 없습니다." });
-        }
+        // //보유 캐릭터 조회
+        // if (!post || post.length === 0) {
+        //     return res.status(404).json({ error: "보유하고 있는 캐릭터가 없습니다." });
+        // }
 
         return res.status(200).json({ data: post });
     } catch (error) {
@@ -105,6 +102,42 @@ router.get('/gacha/:userID', authMiddleware, async (req, res, next) => {
     }
 });
 
+// /** 선수 판매 API **/
+// router.delete('/gacha/shell:playerID', authMiddleware, async (req, res, next) => {
+//     try {
 
+//         const { playerID } = req.params;
+//         const { userID } = req.user; // 로그인한 사용자 정보에서 userID 추출
+//         const user = await prisma.Users.findUnique({
+//             where: { userID: userID },
+//         })
+//         const shell = await prisma.ownedPlayers.findFirst({
+//             where: { playerID: +playerID }
+//         });
+
+//         if (!shell)
+//             return res
+//                 .status(404)
+//                 .json({ message: '보유한 선수 리스트에 해당 선수가 존재하지 않습니다.' });
+//         await prisma.ownedPlayers.delete({ where: { playerID: +playerID } });
+
+//         // 소지금을 100원 증가시킴
+//         const updatedUser = await prisma.Users.update({
+//             where: { userID:+ userID },
+//             data: {
+//                 cash: {
+//                     increment: 100 // 소지금 100원 증가
+//                 }
+//             }
+//         });
+
+//         return res.status(200).json({ data: '해당 선수를 팔았습니다.',updatedCash: updatedUser.cash });
+
+
+
+//     } catch (error) {
+//         next(error);
+//     }
+// });
 
 export default router;
