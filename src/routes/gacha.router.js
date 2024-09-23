@@ -37,7 +37,6 @@ router.post('/gacha', authMiddleware, async (req, res, next) => {
         if (!post1) {
             return res.status(404).json({ error: "캐릭터가 없습니다." });
         }
-        const power = parseInt(post1.defense+post1.finishing+post1.shootPower+post1.speed+post1.stamina)
         
         // ownedPlayers에 데이터를 추가
         const post = await prisma.ownedPlayers.create({
@@ -45,7 +44,7 @@ router.post('/gacha', authMiddleware, async (req, res, next) => {
                 userID: userID,
                 playerID: post1.playerID, // 선택한 캐릭터의 playerID
                 playerName: post1.playerName, // 선택한 캐릭터의 playerName
-                powerLevel:power,
+                powerLevel:post1.powerLevel,
             }
         });
 

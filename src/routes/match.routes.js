@@ -17,7 +17,7 @@ router.get('/match', authMiddleware, async (req, res, next) => {
         });
 
         if (!currentUser) {
-            return res.status(404).json({ error: 'User not found' });
+            return res.status(404).json({ error: '유저 정보가 없습니다' });
         }
 
         const userScore = currentUser.score;
@@ -41,7 +41,7 @@ router.get('/match', authMiddleware, async (req, res, next) => {
         });
 
         if (!opponent) {
-            return res.status(404).json({ message: 'No suitable matches found.' });
+            return res.status(404).json({ message: '시합을 찾을수없습니다' });
         }
 
         // 현재 사용자와 상대방의 팀 정보 가져오기 (EquippedPlayers 테이블 사용)
@@ -57,7 +57,7 @@ router.get('/match', authMiddleware, async (req, res, next) => {
 
         // 게임 가능 여부 확인 (양 팀 모두 3명의 플레이어가 있는지 확인)
         if (userTeam.length !== 3 || opponentTeam.length !== 3) {
-            return res.status(400).json({ message: 'One or both teams do not have exactly 3 players.' });
+            return res.status(400).json({ message: '3명의 선수를 가지고 있지 않습니다.' });
         }
 
         // 두 팀의 총 파워레벨 계산
