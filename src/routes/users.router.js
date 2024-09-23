@@ -285,6 +285,18 @@ router.get('/user/rank', async (req, res, next) => {
     return res.status(200).json({ data: rank });
 });
 
+// 선수 능력치 조회
+router.get('/player/:playerID', async (req, res, next) => {
+    const { playerID } = req.params;
+    const player = await prisma.playersList.findFirst({
+        where: { playerID: +playerID },
+    });
+    if (!player)
+        return res.status(400).json({ errorMessage: '데이터가 없습니다.' });
+
+    return res.status(200).json({ data: player });
+});
+
 // 상대방과의 게임 시작
 router.post(
     '/games/play/:opponentID',
