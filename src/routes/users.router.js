@@ -79,6 +79,7 @@ router.post('/auth/sign-in', async (req, res, next) => {
                 email: true,
                 password: true,
                 userID: true,
+                name: true,
             },
         });
 
@@ -111,6 +112,8 @@ router.post('/auth/sign-in', async (req, res, next) => {
         return res.status(200).json({
             message: '로그인 성공, 헤더에 토큰값이 반환되었습니다.',
             token: `Bearer ${token}`,
+            userID: isExistUser.userID,
+            name: isExistUser.name,
         });
     } catch (err) {
         console.error(err);
@@ -341,35 +344,35 @@ router.post(
         if (result[0] === 'A') {
             const win = await prisma.users.update({
                 where: { userID: +userID },
-                data: { 
+                data: {
                     score: userStat.score + 10,
-                    win : userStat.win + 1
-                 },
+                    win: userStat.win + 1,
+                },
             });
 
             const lose = await prisma.users.update({
                 where: { userID: +opponentID },
-                data: { 
+                data: {
                     score: opponentStat.score - 10,
-                    loss : opponentStat.loss + 1,
-                 },
+                    loss: opponentStat.loss + 1,
+                },
             });
         }
         if (result[0] === 'B') {
             const win = await prisma.users.update({
                 where: { userID: +userID },
-                data: { 
+                data: {
                     score: userStat.score - 10,
-                    loss : userStat.loss + 1,
-                 },
+                    loss: userStat.loss + 1,
+                },
             });
 
             const lose = await prisma.users.update({
                 where: { userID: +opponentID },
-                data: { 
+                data: {
                     score: opponentStat.score + 10,
-                    win : opponentStat.win + 1
-                 },
+                    win: opponentStat.win + 1,
+                },
             });
         }
 
