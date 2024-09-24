@@ -5,7 +5,7 @@ import jwt from 'jsonwebtoken';
 import { Prisma } from '@prisma/client';
 import authMiddleware from '../middlewares/auth.middleware.js';
 import 'dotenv/config';
-import gamelogic from '../gamelogic.js'
+import gamelogic from '../gamelogic.js';
 
 const SECRET_CODE = process.env.SECRET_CODE;
 const PEPPER = process.env.PEPPER;
@@ -338,6 +338,15 @@ router.post(
         const scoreA = userStat.stats * userCondition;
         const scoreB = opponentStat.stats * opponentCondition;
 
+        let mulA = 10;
+        let mulB = 10;
+        
+        //강화 수치에 따른 스텟 추가
+        for(let i = 0 ; i < 3 ; i++){
+            mulA += userTeam[i].powerLevel;
+            mulB += opponentTeam[i].powerLevel;
+        }
+
         //경기 진행 로직
         const result = gamelogic.startgame(scoreA, scoreB);
         console.log(result);
@@ -379,5 +388,86 @@ router.post(
         return res.status(200).json({ data: result });
     },
 );
+
+// 선수 강화
+router.post('/user/upgrade', authMiddleware, async (req, res, next) => {
+    const { userID } = req.user;
+    const { playerID, powerLevel } = req.body;
+
+    const checkID = await prisma.equippedPlayers.findFirst({
+        where: {
+            userID: userID,
+            playerID: playerID,
+            powerLevel: powerLevel,
+        },
+        select: { userID: true, powerLevel: true },
+    });
+
+    if (!checkID)
+        return res
+            .status(400)
+            .json({ message: '장착한 선수만 강화할 수 있습니다.' });
+
+    const checkUpgrade = await prisma.ownedPlayers.findMany({
+        where: {
+            userID: userID,
+            playerID: playerID,
+            powerLevel: powerLevel,
+        },
+        select: { powerLevel: true },
+    });
+
+    if (checkUpgrade.length < 2)
+        return res.status(400).json({ message: '강화할 재료가 부족합니다!' });
+
+    const upgrade = await prisma.equippedPlayers.update({
+        where: {
+            userID_playerID: {
+                // 복합 키로 고유 레코드 지정
+                userID: userID, // 업데이트할 레코드의 userID
+                playerID: playerID, // 업데이트할 레코드의 playerID
+            },
+            powerLevel: powerLevel,
+        },
+        data: { powerLevel: powerLevel + 1 },
+    });
+
+    const playerToUpdate = await prisma.ownedPlayers.findFirst({
+        where: {
+            playerID: playerID,
+            userID: userID,
+            powerLevel: powerLevel,
+        },
+    });
+
+    if (playerToUpdate) {
+        const ownedPlayerUpgrade = await prisma.ownedPlayers.update({
+            where: {
+                opID: playerToUpdate.opID,
+            },
+            data: {
+                powerLevel: powerLevel + 1,
+            },
+        });
+    }
+
+    const playerToDelete = await prisma.ownedPlayers.findFirst({
+        where: {
+            playerID: playerID,
+            userID: userID,
+            powerLevel: powerLevel,
+        },
+    });
+
+    if (playerToDelete) {
+        const deletedPlayer = await prisma.ownedPlayers.delete({
+            where: {
+                opID: playerToDelete.opID,
+            },
+        });
+    }
+
+    return res.status(201).json({message : "강화에 성공하였습니다."});
+});
 
 export default router;
