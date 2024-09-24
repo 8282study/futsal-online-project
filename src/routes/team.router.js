@@ -5,6 +5,21 @@ import authMiddleware from '../middlewares/auth.middleware.js';
 
 const router = express.Router();
 
+// 나만의 팀 조회
+router.get('/auth/myteam', authMiddleware, async (req, res, next) => {
+    const { userID } = req.user;
+    try {
+        const myteamList = await prisma.equippedPlayers.findMany({
+            where: { userID: +userID },
+        });
+        if (!myteamList) throw new Error('데이터가 없습니다.');
+
+        return res.status(200).json({ data: myteamList });
+    } catch (error) {
+        next(error);
+    }
+});
+
 router.post('/auth/createTeam', authMiddleware, async (req, res, next) => {
     const { userID } = req.user;
     const { playerID, powerLevel } = req.body;
@@ -19,8 +34,6 @@ router.post('/auth/createTeam', authMiddleware, async (req, res, next) => {
     });
 
     if (checkID) {
-
-
         try {
             const playerCount = await prisma.equippedPlayers.count({
                 where: {
@@ -34,7 +47,6 @@ router.post('/auth/createTeam', authMiddleware, async (req, res, next) => {
                         userID: userID,
                         playerID: playerID,
                         powerLevel: powerLevel,
-
                     },
                 });
 
