@@ -254,6 +254,7 @@ router.get('/user/rank', async (req, res, next) => {
     // 유저 테이블 가져오기
     const results = await prisma.users.findMany({
         select: {
+            userID: true,
             name: true,
             score: true,
             win: true,
@@ -352,9 +353,9 @@ router.post(
 
         let mulA = 10;
         let mulB = 10;
-        
+
         //강화 수치에 따른 스텟 추가
-        for(let i = 0 ; i < 3 ; i++){
+        for (let i = 0; i < 3; i++) {
             mulA += userTeam[i].powerLevel;
             mulB += opponentTeam[i].powerLevel;
         }
@@ -479,7 +480,7 @@ router.post('/user/upgrade', authMiddleware, async (req, res, next) => {
         });
     }
 
-    return res.status(201).json({message : "강화에 성공하였습니다."});
+    return res.status(201).json({ message: '강화에 성공하였습니다.' });
 });
 
 export default router;
