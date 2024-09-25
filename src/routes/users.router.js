@@ -355,7 +355,7 @@ router.post(
         let mulB = 10;
 
         //강화 수치에 따른 스텟 추가
-        for (let i = 0; i < 3; i++) {
+        for(let i = 0 ; i < 3 ; i++){
             mulA += userTeam[i].powerLevel;
             mulB += opponentTeam[i].powerLevel;
         }
@@ -481,6 +481,5 @@ router.post('/user/upgrade', authMiddleware, async (req, res, next) => {
     }
 
     return res.status(201).json({ message: '강화에 성공하였습니다.' });
-});
-
+  
 export default router;
